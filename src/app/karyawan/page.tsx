@@ -11,6 +11,18 @@ const EMPTY_FORM: Omit<Employee, 'id'> = {
     base_daily_rate: 0, overtime_rate_per_hour: 0, is_active: true,
 };
 
+// ── Currency input helpers ────────────────────────────────────
+/** Format number → "85,000" */
+function formatRupiah(val: number): string {
+    if (!val) return '';
+    return val.toLocaleString('id-ID');
+}
+/** Parse "85,000" or "85000" → 85000 */
+function parseRupiah(str: string): number {
+    const cleaned = str.replace(/[^0-9]/g, '');
+    return cleaned === '' ? 0 : parseInt(cleaned, 10);
+}
+
 export default function KaryawanPage() {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [divisions, setDivisions] = useState<string[]>(DIVISIONS_FALLBACK);
@@ -19,6 +31,9 @@ export default function KaryawanPage() {
     const [editTarget, setEditTarget] = useState<Employee | null>(null);
     const [form, setForm] = useState<Omit<Employee, 'id'>>(EMPTY_FORM);
     const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('active');
+    // Displayed string values for Rupiah inputs (allows empty + commas)
+    const [dailyRateStr, setDailyRateStr] = useState('');
+    const [otRateStr, setOtRateStr] = useState('');
 
     async function load() {
         setLoading(true);
@@ -38,6 +53,8 @@ export default function KaryawanPage() {
     function openAdd() {
         setEditTarget(null);
         setForm(EMPTY_FORM);
+        setDailyRateStr('');
+        setOtRateStr('');
         setShowModal(true);
     }
 
@@ -46,6 +63,8 @@ export default function KaryawanPage() {
         const { id, ...rest } = emp;
         void id;
         setForm(rest);
+        setDailyRateStr(formatRupiah(emp.base_daily_rate));
+        setOtRateStr(formatRupiah(emp.overtime_rate_per_hour));
         setShowModal(true);
     }
 
@@ -194,14 +213,54 @@ export default function KaryawanPage() {
                             </div>
                             <div>
                                 <label>Tarif Harian (Rp)</label>
-                                <input className="ippl-input" type="number" value={form.base_daily_rate}
-                                    onChange={e => setForm(f => ({ ...f, base_daily_rate: Number(e.target.value) }))} />
+                                <input
+                                    className="ippl-input"
+                                    inputMode="numeric"
+                                    placeholder="Contoh: 85,000"
+                                    value={dailyRateStr}
+                                    onChange={e => {
+                                        // Allow digits and commas only
+                                        const raw = e.target.value.replace(/[^0-9,]/g, '');
+                                        setDailyRateStr(raw);
+                                        setForm(f => ({ ...f, base_daily_rate: parseRupiah(raw) }));
+                                    }}
+                                    onBlur={() => {
+                                        // Auto-format on leave
+                                        const num = parseRupiah(dailyRateStr);
+                                        setDailyRateStr(num > 0 ? formatRupiah(num) : '');
+                                        setForm(f => ({ ...f, base_daily_rate: num }));
+                                    }}
+                                />
+                                {form.base_daily_rate > 0 && (
+                                    <div style={{ fontSize: '0.72rem', color: 'var(--accent)', marginTop: '0.3rem' }}>
+                                        = Rp {form.base_daily_rate.toLocaleString('id-ID')}
+                                    </div>
+                                )}
                             </div>
                             {form.worker_type === 'Daily' && (
                                 <div>
                                     <label>Tarif Lembur per Jam (Rp)</label>
-                                    <input className="ippl-input" type="number" value={form.overtime_rate_per_hour}
-                                        onChange={e => setForm(f => ({ ...f, overtime_rate_per_hour: Number(e.target.value) }))} />
+                                    <input
+                                        className="ippl-input"
+                                        inputMode="numeric"
+                                        placeholder="Contoh: 12,500"
+                                        value={otRateStr}
+                                        onChange={e => {
+                                            const raw = e.target.value.replace(/[^0-9,]/g, '');
+                                            setOtRateStr(raw);
+                                            setForm(f => ({ ...f, overtime_rate_per_hour: parseRupiah(raw) }));
+                                        }}
+                                        onBlur={() => {
+                                            const num = parseRupiah(otRateStr);
+                                            setOtRateStr(num > 0 ? formatRupiah(num) : '');
+                                            setForm(f => ({ ...f, overtime_rate_per_hour: num }));
+                                        }}
+                                    />
+                                    {form.overtime_rate_per_hour > 0 && (
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--accent)', marginTop: '0.3rem' }}>
+                                            = Rp {form.overtime_rate_per_hour.toLocaleString('id-ID')}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

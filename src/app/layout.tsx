@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id">
-      <body className={inter.className} style={{ margin: 0, display: 'flex', minHeight: '100vh' }}>
+      <body className={inter.className} suppressHydrationWarning style={{ margin: 0, display: 'flex', minHeight: '100vh' }}>
         <Sidebar />
         <main style={{ flex: 1, padding: '2rem', overflowY: 'auto', minHeight: '100vh' }}>
           {children}
