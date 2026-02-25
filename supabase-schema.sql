@@ -75,7 +75,13 @@ CREATE INDEX IF NOT EXISTS idx_prod_date ON production_logs(work_date);
 
 -- ── Row Level Security ─────────────────────────────────
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
-ALTER TABLE rates_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rates_config ENABLE ROW LEVEL SECURITY;-- ============================================================
+-- v2.0 MIGRATION — Run this if upgrading from v1.0
+-- ============================================================
+ALTER TABLE attendance_logs
+  ADD COLUMN IF NOT EXISTS hours_worked NUMERIC DEFAULT 9;
+-- DEFAULT 9 = full work day. Old records automatically get 9 (full day).
+
 ALTER TABLE attendance_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE production_logs ENABLE ROW LEVEL SECURITY;
 

@@ -35,6 +35,7 @@ export interface AttendanceLog {
   work_date: string;        // ISO date string 'YYYY-MM-DD'
   status: AttendanceStatus;
   overtime_hours: number;
+  hours_worked: number;     // v2.0: hours worked that day (0–9, decimal). 9 = full day.
 }
 
 // Upsert payload (no id needed)
@@ -43,6 +44,7 @@ export interface AttendanceUpsert {
   work_date: string;
   status: AttendanceStatus;
   overtime_hours: number;
+  hours_worked: number;     // v2.0
 }
 
 // ── Production ────────────────────────────────────────────────

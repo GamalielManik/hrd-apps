@@ -16,7 +16,7 @@ export default function SlipGajiPage() {
     const [loading, setLoading] = useState(false);
     const [printMode, setPrintMode] = useState(false);
 
-    const days = getAllWeekDays(week).filter(d => !isSaturday(d));
+    const NORMAL_HOURS = 9;
 
     async function calculate() {
         setLoading(true);
@@ -32,12 +32,18 @@ export default function SlipGajiPage() {
         const employees = (emps ?? []) as Employee[];
 
         const result: EmployeePayrollSummary[] = employees.map(emp => {
-            const myAtt = (att ?? []).filter(a => a.employee_id === emp.id);
-            const myProd = (prod ?? []).filter(p => p.employee_id === emp.id);
+            const myAtt = (att ?? []).filter((a: { employee_id: string }) => a.employee_id === emp.id);
+            const myProd = (prod ?? []).filter((p: { employee_id: string }) => p.employee_id === emp.id);
 
-            const days_present = myAtt.filter(a => a.status === 'Hadir').length;
+            const days_present = myAtt.filter((a: { status: string }) => a.status === 'Hadir').length;
             const total_ot_hours = myAtt.reduce((s: number, a: { overtime_hours: number }) => s + a.overtime_hours, 0);
-            const daily_pay = (days_present * emp.base_daily_rate) + (total_ot_hours * emp.overtime_rate_per_hour);
+
+            // v2.0 formula: SUM(hours_worked / 9 × daily_rate) + SUM(ot_hours × ot_rate)
+            const daily_pay = myAtt.reduce((s: number, a: { hours_worked?: number }) => {
+                const hw = a.hours_worked ?? NORMAL_HOURS; // fallback full day for old records
+                return s + (hw / NORMAL_HOURS) * emp.base_daily_rate;
+            }, 0) + (total_ot_hours * emp.overtime_rate_per_hour);
+
             const borongan_pay = myProd.reduce((s: number, p: { quantity: number; rate_snapshot: number }) => s + p.quantity * p.rate_snapshot, 0);
 
             return {
