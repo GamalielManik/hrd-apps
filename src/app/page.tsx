@@ -1,65 +1,93 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import { Users, ClipboardList, Factory, Receipt, TrendingUp, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import { getCurrentPayrollWeek } from '@/lib/dateUtils';
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState({ employees: 0, attendanceLogs: 0, productionLogs: 0 });
+  const week = getCurrentPayrollWeek();
+
+  useEffect(() => {
+    async function load() {
+      const [{ count: emp }, { count: att }, { count: prod }] = await Promise.all([
+        supabase.from('employees').select('*', { count: 'exact', head: true }).eq('is_active', true),
+        supabase.from('attendance_logs').select('*', { count: 'exact', head: true }).gte('work_date', week.friday.toISOString().split('T')[0]),
+        supabase.from('production_logs').select('*', { count: 'exact', head: true }).gte('work_date', week.friday.toISOString().split('T')[0]),
+      ]);
+      setStats({ employees: emp ?? 0, attendanceLogs: att ?? 0, productionLogs: prod ?? 0 });
+    }
+    load();
+  }, []);
+
+  const cards = [
+    { label: 'Karyawan Aktif', value: stats.employees, icon: Users, href: '/karyawan', color: '#4f8ef7' },
+    { label: 'Absensi Minggu Ini', value: stats.attendanceLogs, icon: ClipboardList, href: '/absensi', color: '#22c55e' },
+    { label: 'Produksi Minggu Ini', value: stats.productionLogs, icon: Factory, href: '/produksi', color: '#a855f7' },
+    { label: 'Lihat Slip Gaji', value: '→', icon: Receipt, href: '/slip-gaji', color: '#f59e0b' },
+  ];
+
+  const quickLinks = [
+    { href: '/karyawan', label: 'Tambah Karyawan' },
+    { href: '/tarif', label: 'Atur Tarif' },
+    { href: '/absensi', label: 'Input Absensi' },
+    { href: '/produksi', label: 'Input Produksi' },
+  ];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div>
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p style={{ color: 'var(--text-secondary)', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>
+            Periode aktif: <strong style={{ color: 'var(--accent)' }}>{week.label}</strong>
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+
+      {/* Payroll cycle info */}
+      <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(79,142,247,0.08)', border: '1px solid rgba(79,142,247,0.25)' }}>
+        <TrendingUp size={20} color="var(--accent)" />
+        <div>
+          <div style={{ fontWeight: 600 }}>Siklus Penggajian: Jumat → Kamis</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            Gajian setiap Jumat. Sabtu = libur (input diblokir).
+          </div>
         </div>
-      </main>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        {cards.map(({ label, value, icon: Icon, href, color }) => (
+          <Link key={href} href={href} style={{ textDecoration: 'none' }}>
+            <div className="card" style={{ cursor: 'pointer', transition: 'border-color 0.15s', borderColor: 'var(--border)' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = color)}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div style={{ background: `${color}22`, borderRadius: 8, padding: '0.5rem' }}>
+                  <Icon size={20} color={color} />
+                </div>
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{value}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>{label}</div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Quick links */}
+      <div className="card">
+        <h3 style={{ margin: '0 0 1rem' }}>Aksi Cepat</h3>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {quickLinks.map(({ href, label }) => (
+            <Link key={href} href={href} className="btn btn-ghost">{label}</Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
