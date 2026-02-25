@@ -43,6 +43,7 @@ export default function AbsensiPage() {
     // Data
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [grid, setGrid] = useState<Grid>({});
+    const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set()); // tracks "empId|dateStr"
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
@@ -64,6 +65,7 @@ export default function AbsensiPage() {
     useEffect(() => {
         if (!selectedDiv) return;
         setSelectedWeek(null);
+        setDirtyKeys(new Set()); // clear dirty on division switch
         supabase.from('employees').select('*')
             .eq('is_active', true)
             .eq('division', selectedDiv)
@@ -104,26 +106,29 @@ export default function AbsensiPage() {
             };
         });
         setGrid(newGrid);
+        setDirtyKeys(new Set()); // reset dirty on fresh load
     }, [selectedWeek, employees]);
 
     useEffect(() => { loadAttendance(); }, [loadAttendance]);
 
     // ── Cell update logic ──────────────────────────────────────
     function updateCell(empId: string, dateStr: string, field: keyof CellData, value: number | string) {
+        // Mark this cell as dirty (user explicitly changed it)
+        const key = `${empId}|${dateStr}`;
+        setDirtyKeys(prev => new Set(prev).add(key));
+
         setGrid(prev => {
             const cell: CellData = { ...(prev[empId]?.[dateStr] ?? { ...DEFAULT_CELL }) };
 
             if (field === 'hours_worked') {
                 const hrs = value === '' ? 0 : Number(value);
                 cell.hours_worked = Math.min(hrs, NORMAL_HOURS);
-                // Auto-derive status
                 if (hrs > 0 && cell.status !== 'Izin') cell.status = 'Hadir';
                 if (hrs === 0 && cell.status === 'Hadir') cell.status = 'Alpha';
             } else if (field === 'overtime_hours') {
                 cell.overtime_hours = value === '' ? 0 : Number(value);
             } else if (field === 'status') {
                 cell.status = value as AttendanceStatus;
-                // If manually set to Hadir but hours = 0, restore to full
                 if (value === 'Hadir' && cell.hours_worked === 0) cell.hours_worked = NORMAL_HOURS;
                 if ((value === 'Alpha' || value === 'Izin')) cell.hours_worked = 0;
             }
@@ -132,24 +137,36 @@ export default function AbsensiPage() {
         });
     }
 
-    // ── Save ───────────────────────────────────────────────────
-    async function saveAll() {
+    // ── Save — only dirty cells ────────────────────────────────
+    async function saveChanges() {
+        if (dirtyKeys.size === 0) return;
         setSaving(true);
-        const rows = employees.flatMap(emp =>
-            Object.entries(grid[emp.id] ?? {}).map(([work_date, cell]) => ({
-                employee_id: emp.id,
-                work_date,
+
+        // Build rows only for dirty keys
+        const rows = Array.from(dirtyKeys).flatMap(key => {
+            const [empId, dateStr] = key.split('|');
+            const cell = grid[empId]?.[dateStr];
+            if (!cell) return [];
+            return [{
+                employee_id: empId,
+                work_date: dateStr,
                 status: cell.status,
                 overtime_hours: cell.overtime_hours,
                 hours_worked: cell.hours_worked,
-            }))
-        );
+            }];
+        });
+
         const { error } = await supabase.from('attendance_logs').upsert(rows, {
             onConflict: 'employee_id,work_date',
         });
         setSaving(false);
-        if (error) alert('Gagal simpan: ' + error.message);
-        else { setSaved(true); setTimeout(() => setSaved(false), 3000); }
+        if (error) {
+            alert('Gagal simpan: ' + error.message);
+        } else {
+            setDirtyKeys(new Set()); // clear dirty after successful save
+            setSaved(true);
+            setTimeout(() => setSaved(false), 3000);
+        }
     }
 
     // ── Calculations ───────────────────────────────────────────
@@ -178,8 +195,23 @@ export default function AbsensiPage() {
                 {selectedWeek && employees.length > 0 && (
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         {saved && <span style={{ color: 'var(--success)', fontSize: '0.875rem' }}>✓ Tersimpan</span>}
-                        <button className="btn btn-primary" onClick={saveAll} disabled={saving}>
-                            <Save size={16} /> {saving ? 'Menyimpan...' : 'Simpan Semua'}
+                        {dirtyKeys.size > 0 && !saved && (
+                            <span style={{
+                                fontSize: '0.78rem', color: 'var(--warning)',
+                                background: 'rgba(251,191,36,0.12)', padding: '0.2rem 0.6rem',
+                                borderRadius: 6, border: '1px solid rgba(251,191,36,0.3)'
+                            }}>
+                                ⚠ {dirtyKeys.size} sel belum disimpan
+                            </span>
+                        )}
+                        <button
+                            className="btn btn-primary"
+                            onClick={saveChanges}
+                            disabled={saving || dirtyKeys.size === 0}
+                            style={{ opacity: dirtyKeys.size === 0 ? 0.45 : 1 }}
+                        >
+                            <Save size={16} />
+                            {saving ? 'Menyimpan...' : dirtyKeys.size > 0 ? `Simpan (${dirtyKeys.size})` : 'Tersimpan'}
                         </button>
                     </div>
                 )}
