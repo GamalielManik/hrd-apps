@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     Users, Settings, ClipboardList, Factory, ShoppingBasket,
-    Receipt, LayoutDashboard, ChevronRight,
+    Receipt, LayoutDashboard, ChevronRight, LayoutGrid,
 } from 'lucide-react';
 
 const navItems = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/karyawan', label: 'Karyawan', icon: Users },
+    { href: '/divisi', label: 'Divisi', icon: LayoutGrid },
     { href: '/tarif', label: 'Tarif', icon: Settings },
     { href: '/absensi', label: 'Absensi', icon: ClipboardList },
     { href: '/produksi', label: 'Produksi', icon: Factory },

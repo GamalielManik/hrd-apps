@@ -96,6 +96,15 @@ export interface PayrollWeek {
 export const SORTIR_ITEM_TYPES: SortirItemType[] = ['rongsok', 'sak', 'packing', 'terpal'];
 export const PRODUCTION_CATEGORIES: ProductionCategory[] = ['Rafia', 'Peletan', 'Sortir', 'Oplosan'];
 export const ATTENDANCE_STATUSES: AttendanceStatus[] = ['Hadir', 'Izin', 'Alpha'];
-export const DIVISIONS = [
+
+// ── Division (Dynamic from Supabase) ──────────────────────────
+export interface Division {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+// Fallback static list (used only if DB not connected)
+export const DIVISIONS_FALLBACK = [
   'Supir', 'Mandor', 'Rafia', 'Sortir', 'Peletan', 'Oplosan', 'Administrasi', 'Kebersihan',
 ];

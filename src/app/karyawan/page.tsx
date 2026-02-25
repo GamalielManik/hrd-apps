@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Power, X, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import type { Employee, WorkerType } from '@/types';
-import { DIVISIONS } from '@/types';
+import type { Employee, WorkerType, Division } from '@/types';
+import { DIVISIONS_FALLBACK } from '@/types';
 
 const EMPTY_FORM: Omit<Employee, 'id'> = {
     name: '', division: '', worker_type: 'Daily',
@@ -13,6 +13,7 @@ const EMPTY_FORM: Omit<Employee, 'id'> = {
 
 export default function KaryawanPage() {
     const [employees, setEmployees] = useState<Employee[]>([]);
+    const [divisions, setDivisions] = useState<string[]>(DIVISIONS_FALLBACK);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editTarget, setEditTarget] = useState<Employee | null>(null);
@@ -21,9 +22,14 @@ export default function KaryawanPage() {
 
     async function load() {
         setLoading(true);
-        const q = supabase.from('employees').select('*').order('division').order('name');
-        const { data } = await q;
-        setEmployees(data ?? []);
+        const [{ data: emps }, { data: divs }] = await Promise.all([
+            supabase.from('employees').select('*').order('division').order('name'),
+            supabase.from('divisions').select('*').eq('is_active', true).order('name'),
+        ]);
+        setEmployees(emps ?? []);
+        if (divs && divs.length > 0) {
+            setDivisions((divs as Division[]).map(d => d.name));
+        }
         setLoading(false);
     }
 
@@ -38,6 +44,7 @@ export default function KaryawanPage() {
     function openEdit(emp: Employee) {
         setEditTarget(emp);
         const { id, ...rest } = emp;
+        void id;
         setForm(rest);
         setShowModal(true);
     }
@@ -82,7 +89,6 @@ export default function KaryawanPage() {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    {/* Filter */}
                     <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
                         <select className="ippl-select" style={{ paddingRight: '2rem', width: 'auto' }}
                             value={filter} onChange={e => setFilter(e.target.value as typeof filter)}>
@@ -163,30 +169,39 @@ export default function KaryawanPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div>
                                 <label>Nama Lengkap *</label>
-                                <input className="ippl-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nama karyawan" />
+                                <input className="ippl-input" value={form.name}
+                                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                                    placeholder="Nama karyawan" />
                             </div>
                             <div>
                                 <label>Divisi *</label>
-                                <select className="ippl-select" value={form.division} onChange={e => setForm(f => ({ ...f, division: e.target.value }))}>
+                                <select className="ippl-select" value={form.division}
+                                    onChange={e => setForm(f => ({ ...f, division: e.target.value }))}>
                                     <option value="">-- Pilih Divisi --</option>
-                                    {DIVISIONS.map(d => <option key={d} value={d}>{d}</option>)}
+                                    {divisions.map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
+                                    Kelola divisi di menu <strong>Tarif → Divisi</strong>
+                                </div>
                             </div>
                             <div>
                                 <label>Tipe Karyawan *</label>
-                                <select className="ippl-select" value={form.worker_type} onChange={e => setForm(f => ({ ...f, worker_type: e.target.value as WorkerType }))}>
+                                <select className="ippl-select" value={form.worker_type}
+                                    onChange={e => setForm(f => ({ ...f, worker_type: e.target.value as WorkerType }))}>
                                     <option value="Daily">Harian (Daily)</option>
                                     <option value="Piece-rate">Borongan (Piece-rate)</option>
                                 </select>
                             </div>
                             <div>
                                 <label>Tarif Harian (Rp)</label>
-                                <input className="ippl-input" type="number" value={form.base_daily_rate} onChange={e => setForm(f => ({ ...f, base_daily_rate: Number(e.target.value) }))} />
+                                <input className="ippl-input" type="number" value={form.base_daily_rate}
+                                    onChange={e => setForm(f => ({ ...f, base_daily_rate: Number(e.target.value) }))} />
                             </div>
                             {form.worker_type === 'Daily' && (
                                 <div>
                                     <label>Tarif Lembur per Jam (Rp)</label>
-                                    <input className="ippl-input" type="number" value={form.overtime_rate_per_hour} onChange={e => setForm(f => ({ ...f, overtime_rate_per_hour: Number(e.target.value) }))} />
+                                    <input className="ippl-input" type="number" value={form.overtime_rate_per_hour}
+                                        onChange={e => setForm(f => ({ ...f, overtime_rate_per_hour: Number(e.target.value) }))} />
                                 </div>
                             )}
                         </div>

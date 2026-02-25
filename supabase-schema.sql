@@ -6,6 +6,24 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- 0. Divisions Master (Dynamic — managed from app)
+CREATE TABLE IF NOT EXISTS divisions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL UNIQUE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Seed initial divisions
+INSERT INTO divisions (name) VALUES
+  ('Supir'), ('Mandor'), ('Rafia'), ('Sortir'),
+  ('Peletan'), ('Oplosan'), ('Administrasi'), ('Kebersihan')
+ON CONFLICT (name) DO NOTHING;
+
+-- RLS for divisions
+ALTER TABLE divisions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_divisions" ON divisions FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
 -- 1. Master Employees
 CREATE TABLE IF NOT EXISTS employees (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
