@@ -70,10 +70,21 @@ export default function KaryawanPage() {
 
     async function save() {
         if (!form.name || !form.division) return alert('Nama dan divisi wajib diisi.');
+        let error;
         if (editTarget) {
-            await supabase.from('employees').update(form).eq('id', editTarget.id);
+            ({ error } = await supabase.from('employees').update(form).eq('id', editTarget.id));
         } else {
-            await supabase.from('employees').insert(form);
+            ({ error } = await supabase.from('employees').insert(form));
+        }
+        if (error) {
+            alert(
+                '❌ Gagal menyimpan data!\n\n' +
+                'Pesan error: ' + error.message + '\n\n' +
+                'Kemungkinan penyebab:\n' +
+                '• RLS policy Supabase memblokir akses (jalankan SQL fix di console Supabase)\n' +
+                '• Koneksi Supabase belum dikonfigurasi di .env.local'
+            );
+            return;
         }
         setShowModal(false);
         load();
@@ -82,7 +93,8 @@ export default function KaryawanPage() {
     async function toggleActive(emp: Employee) {
         const action = emp.is_active ? 'nonaktifkan' : 'aktifkan';
         if (!confirm(`${action} ${emp.name}?`)) return;
-        await supabase.from('employees').update({ is_active: !emp.is_active }).eq('id', emp.id);
+        const { error } = await supabase.from('employees').update({ is_active: !emp.is_active }).eq('id', emp.id);
+        if (error) { alert('Gagal: ' + error.message); return; }
         load();
     }
 
