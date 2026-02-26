@@ -72,14 +72,14 @@ export function getWeeksInMonth(month: number, year: number): PayrollWeek[] {
     return weeks;
 }
 
-/** Returns true if the day is a weekday (Mon–Fri, not Sat/Sun) */
+/** Only Saturday is OFF. Minggu (Sunday) IS a work day. */
 export function isWorkDay(date: Date): boolean {
-    return !isSaturday(date) && !isSunday(date);
+    return !isSaturday(date);
 }
 
 /**
- * Returns Mon–Fri work days in the given payroll week
- * (Fri of start-week + Mon–Thu of next, excluding Sat & Sun)
+ * Returns work days in the payroll week: Fri, Sun, Mon, Tue, Wed, Thu
+ * Only Saturday is excluded.
  */
 export function getWorkDays(week: PayrollWeek): Date[] {
     return eachDayOfInterval({ start: week.friday, end: week.thursday })
